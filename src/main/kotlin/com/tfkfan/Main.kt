@@ -1,3 +1,5 @@
+package com.tfkfan
+
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.IOException
@@ -7,7 +9,7 @@ import javax.imageio.ImageIO
 import kotlin.math.min
 
 const val frameWidth = 70
-const val whiteBg: Int = -1
+const val whiteBg = -1
 const val grayBg = -8882056
 
 const val leftRankOffset = 149
@@ -38,23 +40,22 @@ fun processImage(image: BufferedImage): String {
     return if (!isCardRank) "" else stringBuilder.toString()
 }
 
-fun parseCards(image: BufferedImage, frameWidth: Int, cardsNum: Int): List<Card> {
-    val cards: MutableList<Card> = mutableListOf()
-    for (z in 0..<cardsNum) {
-        val rankStr = processImage(
-            image.getSubimage(
-                z * frameWidth + leftRankOffset, topRankOffset, rankFrameWidth, rankFrameHeight
-            )
+fun parseCards(image: BufferedImage, frameWidth: Int, cardsNum: Int): List<Card> = (0..<cardsNum).mapNotNull {
+    val rankStr = processImage(
+        image.getSubimage(
+            it * frameWidth + leftRankOffset, topRankOffset, rankFrameWidth, rankFrameHeight
         )
-        val suitStr = processImage(
-            image.getSubimage(
-                z * frameWidth + leftSuitOffset, topSuitOffset, suitFrameWidth, suitFrameHeight
-            )
+    )
+
+    val suitStr = processImage(
+        image.getSubimage(
+            it * frameWidth + leftSuitOffset, topSuitOffset, suitFrameWidth, suitFrameHeight
         )
-        if (rankStr.isNotBlank() && suitStr.isNotBlank()) cards.add(Card(rankStr, suitStr))
-    }
-    return cards
-}
+    )
+    if (rankStr.isNotBlank() && suitStr.isNotBlank())
+        Card(rankStr, suitStr)
+    else null
+}.toList()
 
 fun levenshtein(targetStr: String, sourceStr: String): Int {
     val m = targetStr.length
@@ -63,10 +64,11 @@ fun levenshtein(targetStr: String, sourceStr: String): Int {
     for (i in 1..m) delta[i][0] = i
     for (j in 1..n) delta[0][j] = j
     for (j in 1..n) for (i in 1..m) {
-        if (targetStr[i - 1] == sourceStr[j - 1]) delta[i][j] = delta[i - 1][j - 1] else delta[i][j] = min(
-            (delta[i - 1][j] + 1).toDouble(),
-            min((delta[i][j - 1] + 1).toDouble(), (delta[i - 1][j - 1] + 1).toDouble())
-        ).toInt()
+        if (targetStr[i - 1] == sourceStr[j - 1]) delta[i][j] = delta[i - 1][j - 1] else delta[i][j] =
+            min(
+                delta[i - 1][j] + 1,
+                min(delta[i][j - 1] + 1, delta[i - 1][j - 1] + 1)
+            )
     }
     return delta[m][n]
 }
@@ -84,16 +86,14 @@ fun findSymbol(assets: List<AssetsFileContent>, targetStr: String): String {
     return value
 }
 
-fun getAssetsContent(directory: String): List<AssetsFileContent> {
-    return File(directory).listFiles()?.map {
-        AssetsFileContent(it.name.replace(".txt", ""), Files.readString(it.toPath(), Charset.forName("UTF-8")))
-    } ?: throw IOException("Files not found")
-}
+fun getAssetsContent(directory: String): List<AssetsFileContent> = File(directory).listFiles()?.map {
+    AssetsFileContent(it.name.replace(".txt", ""), Files.readString(it.toPath(), Charset.forName("UTF-8")))
+} ?: throw IOException("Files not found")
 
 fun main(args: Array<String>) {
-    val suites: List<AssetsFileContent> = getAssetsContent("assets/suit")
-    val ranks: List<AssetsFileContent> = getAssetsContent("assets/rank")
-    for (file in File("imgs_marked").listFiles()!!) {
+    val suites: List<AssetsFileContent> = getAssetsContent(args[2])
+    val ranks: List<AssetsFileContent> = getAssetsContent(args[1])
+    for (file in File(args[0]).listFiles()!!) {
         println("${file.name} - ${
             parseCards(ImageIO.read(file), frameWidth, 5).map {
                 "${findSymbol(ranks, it.rank)}${findSymbol(suites, it.suit)}"

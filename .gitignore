@@ -25,14 +25,14 @@ out/
 .settings
 .springBeans
 .sts4-cache
-bin/
+/bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
-/dist/
+/release/
 /nbdist/
 /.nb-gradle/
 
